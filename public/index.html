@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Manager</title>
+</head>
+<body>
+    <h1>Task Manager</h1>
+
+    <h2>Create New Task</h2>
+    <form id="taskForm">
+        <label for="title">Title:</label>
+        <input type="text" id="title" name="title" required><br><br>
+        
+        <label for="description">Description:</label>
+        <input type="text" id="description" name="description"><br><br>
+
+        <label for="status">Status:</label>
+        <select id="status" name="status">
+            <option value="pending">Pending</option>
+            <option value="in-progress">In Progress</option>
+            <option value="completed">Completed</option>
+        </select><br><br>
+
+        <label for="dueDate">Due Date:</label>
+        <input type="date" id="dueDate" name="dueDate"><br><br>
+
+        <button type="submit">Create Task</button>
+    </form>
+
+    <h2>Tasks List</h2>
+    <ul id="taskList"></ul>
+
+    <h2>Update Task</h2>
+    <form id="updateTaskForm">
+        <label for="updateTitle">Title:</label>
+        <input type="text" id="updateTitle" name="title" required><br><br>
+
+        <label for="updateDescription">Description:</label>
+        <input type="text" id="updateDescription" name="description"><br><br>
+
+        <label for="updateStatus">Status:</label>
+        <select id="updateStatus" name="status">
+            <option value="pending">Pending</option>
+            <option value="in-progress">In Progress</option>
+            <option value="completed">Completed</option>
+        </select><br><br>
+
+        <label for="updateDueDate">Due Date:</label>
+        <input type="date" id="updateDueDate" name="dueDate"><br><br>
+
+        <input type="hidden" id="updateTaskId">
+        <button type="submit">Update Task</button>
+    </form>
+
+    <script>
+        // Get all tasks from the server
+        async function getTasks() {
+            const response = await fetch('/api/tasks');
+            const tasks = await response.json();
+            const taskList = document.getElementById('taskList');
+            taskList.innerHTML = ''; // Clear the current list
+
+            tasks.forEach(task => {
+                const taskItem = document.createElement('li');
+                
+                // Display task details including description, status, and due date
+                taskItem.innerHTML = `
+                    <strong>Title:</strong> ${task.title} <br>
+                    <strong>Description:</strong> ${task.description} <br>
+                    <strong>Status:</strong> ${task.status} <br>
+                    <strong>Due Date:</strong> ${task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'N/A'} <br>
+                `;
+
+                // Add click listener for loading the task into the update form
+                taskItem.addEventListener('click', () => loadTaskForUpdate(task));
+                
+                // Add a delete button for each task
+                const deleteButton = document.createElement('button');
+                deleteButton.textContent = 'Delete';
+                deleteButton.addEventListener('click', (e) => deleteTask(e, task._id));
+                taskItem.appendChild(deleteButton);
+                
+                taskList.appendChild(taskItem); // Append the task to the task list
+            });
+        }
+
+        // Create a new task
+        document.getElementById('taskForm').addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const title = document.getElementById('title').value;
+            const description = document.getElementById('description').value;
+            const status = document.getElementById('status').value;
+            const dueDate = document.getElementById('dueDate').value;
+
+            const newTask = { title, description, status, dueDate };
+
+            const response = await fetch('/api/tasks', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(newTask)
+            });
+
+            if (response.ok) {
+                alert('Task created successfully');
+                getTasks(); // Refresh task list
+            } else {
+                alert('Failed to create task');
+            }
+        });
+
+        // Load task into update form for editing
+        function loadTaskForUpdate(task) {
+            document.getElementById('updateTaskId').value = task._id;
+            document.getElementById('updateTitle').value = task.title;
+            document.getElementById('updateDescription').value = task.description;
+            document.getElementById('updateStatus').value = task.status;
+            document.getElementById('updateDueDate').value = task.dueDate.split('T')[0]; // Date format correction
+        }
+
+        // Update a task
+        document.getElementById('updateTaskForm').addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const taskId = document.getElementById('updateTaskId').value;
+            const title = document.getElementById('updateTitle').value;
+            const description = document.getElementById('updateDescription').value;
+            const status = document.getElementById('updateStatus').value;
+            const dueDate = document.getElementById('updateDueDate').value;
+
+            const updatedTask = { title, description, status, dueDate };
+
+            const response = await fetch(`/api/tasks/${taskId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(updatedTask)
+            });
+
+            if (response.ok) {
+                alert('Task updated successfully');
+                getTasks(); // Refresh task list
+            } else {
+                alert('Failed to update task');
+            }
+        });
+
+        // Delete a task
+        async function deleteTask(e, taskId) {
+            e.stopPropagation(); // Prevent triggering the task click event
+            const response = await fetch(`/api/tasks/${taskId}`, {
+                method: 'DELETE',
+            });
+
+            if (response.ok) {
+                alert('Task deleted successfully');
+                getTasks(); // Refresh task list
+            } else {
+                alert('Failed to delete task');
+            }
+        }
+
+        // Initialize the task list when the page loads
+        getTasks();
+    </script>
+</body>
+</html>
